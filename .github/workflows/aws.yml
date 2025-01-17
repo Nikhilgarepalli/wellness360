@@ -95,7 +95,7 @@ jobs:
           # Deploy the new task definition to the existing ECS cluster
           aws ecs update-service \
             --cluster Dev \
-            --service servicename \
+            --service sericename \
             --task-definition ${{ env.TASK_DEFINITION_ARN }} \
             --desired-count 1 \
             --force-new-deployment
