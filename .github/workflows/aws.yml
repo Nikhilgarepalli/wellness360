@@ -66,22 +66,20 @@ jobs:
           # Get the latest revision ARN for the existing task definition
           task_def_arn=$(aws ecs describe-task-definition --task-definition test:2 --query 'taskDefinition.taskDefinitionArn' --output text)
           echo "Task Definition ARN: $task_def_arn"
-          echo "::set-output name=task-definition-arn::$task_def_arn"
+          echo "TASK_DEFINITION_ARN=$task_def_arn" >> $GITHUB_ENV  # Set the ARN using the GitHub environment file
 
       - name: Register New Task Definition Revision
         id: register-task-def
         run: |
           # Create the new task definition based on the existing one
-          task_def_arn="${{ steps.get-task-def.outputs.task-definition-arn }}"
+          task_def_arn="${{ env.TASK_DEFINITION_ARN }}"
           new_task_def=$(aws ecs describe-task-definition --task-definition "$task_def_arn" --query "taskDefinition.containerDefinitions[0]" --output json)
           
           # Replace the container image with the new Docker image
           updated_task_def=$(echo "$new_task_def" | jq '.image = "783764588682.dkr.ecr.us-east-1.amazonaws.com/hello-java:${{ github.sha }}"')
           
-          # Ensure that memory settings are added, either memory or memoryReservation
-          updated_task_def=$(echo "$updated_task_def" | jq '.memory = 512') # Set memory limit
-          # Alternatively, you can use memoryReservation if preferred
-          # updated_task_def=$(echo "$updated_task_def" | jq '.memoryReservation = "512"')
+          # Ensure that memory is specified as an integer
+          updated_task_def=$(echo "$updated_task_def" | jq '.memory = 512')  # Corrected to integer
 
           # Register the updated task definition
           new_task_def_arn=$(aws ecs register-task-definition \
@@ -91,12 +89,12 @@ jobs:
             --output text)
           
           echo "New Task Definition ARN: $new_task_def_arn"
-          echo "::set-output name=task-definition-arn::$new_task_def_arn"
+          echo "TASK_DEFINITION_ARN=$new_task_def_arn" >> $GITHUB_ENV  # Set the ARN using the GitHub environment file
 
       - name: Update ECS Service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
-          task-definition: ${{ steps.register-task-def.outputs.task-definition-arn }}
+          task-definition: ${{ env.TASK_DEFINITION_ARN }}  # Pass the ARN from environment file
           service: servicename
           cluster: dev
           wait-for-service-stability: true
