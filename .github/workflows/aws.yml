@@ -60,46 +60,53 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Get Existing Task Definition ARN
-        id: get-task-def
-        run: |
-          # Get the latest revision ARN for the existing task definition
-          task_def_arn=$(aws ecs describe-task-definition --task-definition test:2 --query 'taskDefinition.taskDefinitionArn' --output text)
-          echo "Task Definition ARN: $task_def_arn"
-          echo "TASK_DEFINITION_ARN=$task_def_arn" >> $GITHUB_ENV  # Set the ARN using the GitHub environment file
-
       - name: Register New Task Definition Revision
         id: register-task-def
         run: |
-          # Create the new task definition based on the existing one
-          task_def_arn="${{ env.TASK_DEFINITION_ARN }}"
-          new_task_def=$(aws ecs describe-task-definition --task-definition "$task_def_arn" --query "taskDefinition.containerDefinitions[0]" --output json)
+          # Define the container definition with the new Docker image
+          container_def=$(cat <<-EOF
+          [
+            {
+              "name": "java-1",
+              "image": "783764588682.dkr.ecr.us-east-1.amazonaws.com/hello-java:${{ github.sha }}",
+              "memory": 512,
+              "cpu": 256,
+              "essential": true
+            }
+          ]
+          EOF
+          )
           
-          # Replace the container image with the new Docker image
-          updated_task_def=$(echo "$new_task_def" | jq '.image = "783764588682.dkr.ecr.us-east-1.amazonaws.com/hello-java:${{ github.sha }}"')
-          
-          # Ensure that memory is specified as an integer
-          updated_task_def=$(echo "$updated_task_def" | jq '.memory = 512')  # Corrected to integer
-
-          # Register the updated task definition
+          # Register the new task definition
           new_task_def_arn=$(aws ecs register-task-definition \
             --family test \
-            --container-definitions "$updated_task_def" \
+            --container-definitions "$container_def" \
             --query 'taskDefinition.taskDefinitionArn' \
             --output text)
           
           echo "New Task Definition ARN: $new_task_def_arn"
           echo "TASK_DEFINITION_ARN=$new_task_def_arn" >> $GITHUB_ENV  # Set the ARN using the GitHub environment file
 
+      - name: Create New ECS Service
+        run: |
+          # Create a new ECS service using the new task definition
+          aws ecs create-service \
+            --cluster dev1 \
+            --service-name my-new-service \
+            --task-definition ${{ env.TASK_DEFINITION_ARN }} \
+            --desired-count 1 \
+            --launch-type Fargate \
+            --deployment-controller type=ECS
+
       - name: Update ECS Service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ env.TASK_DEFINITION_ARN }}  # Pass the ARN from environment file
-          service: servicename
+          service: my-new-service  # Use the new service name
           cluster: dev
           wait-for-service-stability: true
         env:
           AWS_REGION: us-east-1
 
       - name: Confirm Deployment
-        run: echo "Deployment to ECS service 'servicename' on cluster 'dev' is complete."
+        run: echo "Deployment to ECS service 'my-new-service' on cluster 'dev' is complete."
