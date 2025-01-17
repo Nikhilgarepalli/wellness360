@@ -60,20 +60,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Check if ECS Cluster Exists
-        id: check-cluster
-        run: |
-          # Check if the ECS cluster exists
-          cluster_name="dev"
-          cluster_exists=$(aws ecs describe-clusters --clusters "$cluster_name" --query 'clusters[0].clusterName' --output text)
-          if [ "$cluster_exists" == "None" ]; then
-            echo "Cluster not found. Creating the cluster..."
-            aws ecs create-cluster --cluster-name "$cluster_name" --region us-east-1
-          else
-            echo "Cluster '$cluster_name' already exists."
-          fi
-
-      - name: Register New Task Definition Revision
+      - name: Register New Task Definition Revision (for Fargate)
         id: register-task-def
         run: |
           # Define the container definition with the new Docker image
@@ -90,9 +77,12 @@ jobs:
           EOF
           )
           
-          # Register the new task definition
+          # Register the new task definition for Fargate (with awsvpc network mode)
           new_task_def_arn=$(aws ecs register-task-definition \
             --family test \
+            --network-mode awsvpc \
+            --cpu "256" \
+            --memory "512" \
             --container-definitions "$container_def" \
             --query 'taskDefinition.taskDefinitionArn' \
             --output text)
@@ -100,16 +90,16 @@ jobs:
           echo "New Task Definition ARN: $new_task_def_arn"
           echo "TASK_DEFINITION_ARN=$new_task_def_arn" >> $GITHUB_ENV  # Set the ARN using the GitHub environment file
 
-      - name: Create New ECS Service
+      - name: Create New ECS Service (for Fargate)
         run: |
-          # Create a new ECS service using the new task definition
+          # Create a new ECS service using the new task definition for Fargate
           aws ecs create-service \
             --cluster dev \
             --service-name my-new-service \
             --task-definition ${{ env.TASK_DEFINITION_ARN }} \
             --desired-count 1 \
             --launch-type FARGATE \
-            --deployment-controller type=ECS
+            --network-configuration "awsvpcConfiguration={subnets=[subnet-xxxxxx],securityGroups=[sg-xxxxxx],assignPublicIp=ENABLED}"
 
       - name: Update ECS Service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
