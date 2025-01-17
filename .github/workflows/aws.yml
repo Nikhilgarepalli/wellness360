@@ -29,6 +29,8 @@ jobs:
 
       - name: Build Application
         run: mvn clean package -DskipTests
+      - name: Debug File Structure
+        run: ls -R
 
       - name: Log in to Amazon ECR
         id: login-ecr
