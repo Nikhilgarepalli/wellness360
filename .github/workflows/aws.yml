@@ -97,8 +97,8 @@ jobs:
         run: |
           # Deploy the new task definition to the existing ECS cluster (dev) with Fargate
           aws ecs update-service \
-            --cluster dev \
-            --service sevicename \
+            --cluster Dev \
+            --service sericename \
             --task-definition ${{ env.TASK_DEFINITION_ARN }} \
             --desired-count 1 \
             --force-new-deployment \
