@@ -60,7 +60,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Register New Task Definition Revision (for Fargate)
+      - name: Register New Task Definition Revision (Fargate)
         id: register-task-def
         run: |
           # Define the container definition with the new Docker image
@@ -90,7 +90,7 @@ jobs:
           echo "New Task Definition ARN: $new_task_def_arn"
           echo "TASK_DEFINITION_ARN=$new_task_def_arn" >> $GITHUB_ENV  # Set the ARN using the GitHub environment file
 
-      - name: Create New ECS Service (for Fargate)
+      - name: Create New ECS Service (Fargate)
         run: |
           # Create a new ECS service using the new task definition for Fargate
           aws ecs create-service \
@@ -99,7 +99,7 @@ jobs:
             --task-definition ${{ env.TASK_DEFINITION_ARN }} \
             --desired-count 1 \
             --launch-type FARGATE \
-            --network-configuration "awsvpcConfiguration={subnets=[subnet-xxxxxx],securityGroups=[sg-xxxxxx],assignPublicIp=ENABLED}"
+            --network-configuration "awsvpcConfiguration={subnets=[subnet-07a8478ec077d9e68],securityGroups=[terraform-sg20250116122527047800000001],assignPublicIp=ENABLED}"
 
       - name: Update ECS Service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
