@@ -91,7 +91,7 @@ jobs:
         run: |
           # Create a new ECS service using the new task definition
           aws ecs create-service \
-            --cluster dev1 \
+            --cluster dev \
             --service-name my-new-service \
             --task-definition ${{ env.TASK_DEFINITION_ARN }} \
             --desired-count 1 \
