@@ -60,35 +60,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Get Current Task Definition
-        id: get-task-def
-        run: |
-          # Get the current task definition JSON
-          task_def=$(aws ecs describe-task-definition \
-            --task-definition my-task-definition \
-            --query 'taskDefinition' \
-            --output json)
-          echo "::set-output name=task-definition::$task_def"
-
-      - name: Register New Task Definition Revision
-        id: register-task-def
-        run: |
-          # Modify the task definition with the new Docker image
-          updated_task_def=$(echo "${{ steps.get-task-def.outputs.task-definition }}" | jq '.containerDefinitions[0].image = "783764588682.dkr.ecr.us-east-1.amazonaws.com/hello-java:${{ github.sha }}"')
-          
-          # Register the updated task definition with AWS
-          task_def_arn=$(aws ecs register-task-definition \
-            --family test \
-            --container-definitions "$updated_task_def" \
-            --query 'taskDefinition.taskDefinitionArn' \
-            --output text)
-          
-          echo "::set-output name=task-definition-arn::$task_def_arn"
-
       - name: Update ECS Service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
-          task-definition: ${{ steps.register-task-def.outputs.task-definition-arn }}
+          task-definition: arn:aws:ecs:us-east-1:783764588682:task-definition/test:2
           service: servicename
           cluster: dev
           wait-for-service-stability: true
