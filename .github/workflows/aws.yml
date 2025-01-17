@@ -102,7 +102,7 @@ jobs:
             --task-definition ${{ env.TASK_DEFINITION_ARN }} \
             --desired-count 1 \
             --force-new-deployment \
-            --network-configuration "awsvpcConfiguration={subnets=[subnet-07a8478ec077d9e68],securityGroups=[terraform-sg20250116122527047800000001],assignPublicIp=ENABLED}"
+            --network-configuration "awsvpcConfiguration={subnets=[subnet-07a8478ec077d9e68],securityGroups=[sg-07d476d071f1c3a16],assignPublicIp=ENABLED}"
 
       - name: Confirm Deployment
         run: echo "Deployment to ECS cluster 'dev' with task definition '${{ env.TASK_DEFINITION_ARN }}' is complete."
