@@ -60,14 +60,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Register New Task Definition
+      - name: Register New Task Definition (Fargate with Linux/ARM)
         id: register-task-def
         run: |
           # Define the container definition with the new Docker image
           container_def=$(cat <<-EOF
           [
             {
-              "name": "java-1",
+              "name": "github",
               "image": "783764588682.dkr.ecr.us-east-1.amazonaws.com/hello-java:${{ github.sha }}",
               "memory": 512,
               "cpu": 256,
@@ -79,13 +79,13 @@ jobs:
           
           # Register the new task definition for Fargate (with awsvpc network mode)
           new_task_def_arn=$(aws ecs register-task-definition \
-            --family test \
+            --family github_task \
             --network-mode awsvpc \
             --cpu "256" \
             --memory "512" \
             --requires-compatibilities "FARGATE" \
             --execution-role-arn arn:aws:iam::783764588682:role/ecsTaskExecutionRole \
-            --task-role-arn arn:aws:iam::783764588682:role/ecsTaskRole \
+            --task-role-arn arn:aws:iam::783764588682:role/ecsTaskExecutionRole \
             --container-definitions "$container_def" \
             --query 'taskDefinition.taskDefinitionArn' \
             --output text)
@@ -93,15 +93,17 @@ jobs:
           echo "New Task Definition ARN: $new_task_def_arn"
           echo "TASK_DEFINITION_ARN=$new_task_def_arn" >> $GITHUB_ENV  # Set the ARN using the GitHub environment file
 
-      - name: Deploy New Task Definition to ECS Cluster
+      - name: Deploy New Task Definition to ECS Cluster (Fargate)
         run: |
-          # Deploy the new task definition to the existing ECS cluster
+          # Deploy the new task definition to the existing ECS cluster (dev) with Fargate
           aws ecs update-service \
-            --cluster Dev \
-            --service sericename \
+            --cluster dev \
+            --service my-existing-service \
             --task-definition ${{ env.TASK_DEFINITION_ARN }} \
             --desired-count 1 \
-            --force-new-deployment
+            --launch-type FARGATE \
+            --force-new-deployment \
+            --network-configuration "awsvpcConfiguration={subnets=[subnet-07a8478ec077d9e68],securityGroups=[terraform-sg20250116122527047800000001],assignPublicIp=ENABLED}"
 
       - name: Confirm Deployment
         run: echo "Deployment to ECS cluster 'dev' with task definition '${{ env.TASK_DEFINITION_ARN }}' is complete."
