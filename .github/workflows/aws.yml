@@ -60,6 +60,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      - name: Check if ECS Cluster Exists
+        id: check-cluster
+        run: |
+          # Check if the ECS cluster exists
+          cluster_name="dev"
+          cluster_exists=$(aws ecs describe-clusters --clusters "$cluster_name" --query 'clusters[0].clusterName' --output text)
+          if [ "$cluster_exists" == "None" ]; then
+            echo "Cluster not found. Creating the cluster..."
+            aws ecs create-cluster --cluster-name "$cluster_name" --region us-east-1
+          else
+            echo "Cluster '$cluster_name' already exists."
+          fi
+
       - name: Register New Task Definition Revision
         id: register-task-def
         run: |
@@ -95,7 +108,7 @@ jobs:
             --service-name my-new-service \
             --task-definition ${{ env.TASK_DEFINITION_ARN }} \
             --desired-count 1 \
-            --launch-type Fargate \
+            --launch-type FARGATE \
             --deployment-controller type=ECS
 
       - name: Update ECS Service
