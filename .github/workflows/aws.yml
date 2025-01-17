@@ -78,7 +78,7 @@ jobs:
           
           # Register the updated task definition with AWS
           task_def_arn=$(aws ecs register-task-definition \
-            --family my-task-definition \
+            --family test \
             --container-definitions "$updated_task_def" \
             --query 'taskDefinition.taskDefinitionArn' \
             --output text)
